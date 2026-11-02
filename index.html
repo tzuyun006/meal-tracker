@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f7f5ef">
+  <title>好好吃飯｜三餐紀錄</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="好好吃飯首頁">
+        <span class="brand-mark">食</span>
+        <span><strong>好好吃飯</strong><small>MEAL TRACKER</small></span>
+      </a>
+      <button class="icon-button" id="settingsBtn" aria-label="提醒設定" title="提醒設定">⚙</button>
+    </header>
+
+    <main>
+      <section class="welcome">
+        <div>
+          <p class="eyebrow" id="todayLabel">今天</p>
+          <h1>每一餐，都值得好好記錄。</h1>
+          <p class="subheading">記下吃了什麼，也照顧每天的生活開銷。</p>
+        </div>
+        <div class="welcome-illustration" aria-hidden="true">🥗</div>
+      </section>
+
+      <section class="summary-grid" aria-label="餐費摘要">
+        <article class="summary-card main-summary">
+          <div class="summary-top"><span>本日餐費</span><span class="summary-icon">＄</span></div>
+          <div class="summary-value" id="todayTotal">$0</div>
+          <div class="summary-foot">已記錄餐點的花費總和</div>
+        </article>
+        <article class="summary-card">
+          <div class="summary-top"><span>完成餐數</span><span class="summary-icon">✓</span></div>
+          <div class="summary-value"><span id="completedCount">0</span><small> / 3 餐</small></div>
+          <div class="progress-track"><span id="progressBar"></span></div>
+        </article>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div><p class="eyebrow">TODAY'S MEALS</p><h2>今天吃了什麼？</h2></div>
+          <span class="date-chip" id="dateChip"></span>
+        </div>
+        <div class="meal-list" id="mealList"></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div><p class="eyebrow">SPENDING OVERVIEW</p><h2>餐費統計</h2></div>
+          <select id="statsRange" class="range-select" aria-label="統計期間">
+            <option value="day">今天</option>
+            <option value="week">本週</option>
+            <option value="month" selected>本月</option>
+          </select>
+        </div>
+        <div class="stats-card">
+          <div class="stats-total">
+            <span id="rangeLabel">本月累計</span>
+            <strong id="rangeTotal">$0</strong>
+          </div>
+          <div class="stats-details">
+            <div><span class="dot breakfast"></span><span>早餐</span><strong id="breakfastTotal">$0</strong></div>
+            <div><span class="dot lunch"></span><span>午餐</span><strong id="lunchTotal">$0</strong></div>
+            <div><span class="dot dinner"></span><span>晚餐</span><strong id="dinnerTotal">$0</strong></div>
+          </div>
+          <p class="muted small" id="statsNote">依照已儲存的餐點紀錄統計。</p>
+        </div>
+      </section>
+
+      <section class="section-block reminder-section">
+        <div class="section-heading">
+          <div><p class="eyebrow">MEAL REMINDERS</p><h2>記得按時吃飯</h2></div>
+          <button class="text-button" id="openReminderBtn">設定提醒 →</button>
+        </div>
+        <div class="reminder-card">
+          <div class="reminder-symbol">🔔</div>
+          <div class="reminder-copy">
+            <strong id="nextReminderTitle">設定你的三餐時間</strong>
+            <p id="nextReminderText">到用餐時間，如果還沒有紀錄，網站會提醒你。</p>
+          </div>
+          <span class="reminder-status" id="reminderStatus">提醒設定</span>
+        </div>
+        <p class="muted small reminder-note">提醒需要保持網站開啟；瀏覽器通知也需要允許權限。若關閉網站，定時提醒不一定會送達。</p>
+      </section>
+    </main>
+
+    <footer>
+      <span>好好吃飯 · 好好生活</span>
+      <span>資料只保存在目前這台裝置的瀏覽器</span>
+    </footer>
+  </div>
+
+  <dialog id="mealDialog" class="modal">
+    <form id="mealForm" method="dialog">
+      <div class="modal-heading">
+        <div><p class="eyebrow">MEAL RECORD</p><h2 id="mealDialogTitle">新增餐點</h2></div>
+        <button type="button" class="close-button" data-close="mealDialog" aria-label="關閉">×</button>
+      </div>
+      <input type="hidden" id="mealType">
+      <label for="mealName">餐點名稱</label>
+      <input id="mealName" type="text" maxlength="60" placeholder="例如：雞腿便當、蛋餅＋豆漿">
+      <div class="form-row">
+        <div class="form-field">
+          <label for="mealPrice">花費（元）</label>
+          <input id="mealPrice" type="number" min="0" max="999999" step="1" placeholder="例如 85">
+        </div>
+        <div class="form-field">
+          <label for="mealTime">用餐時間</label>
+          <input id="mealTime" type="time">
+        </div>
+      </div>
+      <label for="mealNote">備註（選填）</label>
+      <textarea id="mealNote" rows="2" maxlength="300" placeholder="例如：和同學一起吃、今天吃得比較清淡"></textarea>
+      <label class="upload-label" for="mealPhoto">
+        <span class="upload-icon">＋</span>
+        <span><strong>上傳餐點照片</strong><small>支援 JPG、PNG、WEBP，建議使用 5MB 以內的照片</small></span>
+      </label>
+      <input id="mealPhoto" type="file" accept="image/*" hidden>
+      <div id="photoPreviewWrap" class="photo-preview-wrap" hidden>
+        <img id="photoPreview" alt="餐點照片預覽">
+        <button type="button" id="removePhoto" class="remove-photo">移除照片</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="button button-ghost" data-close="mealDialog">取消</button>
+        <button type="submit" class="button button-primary">儲存紀錄</button>
+      </div>
+      <p class="form-hint">照片與紀錄會儲存在這台裝置的瀏覽器中，不會自動上傳到網路。</p>
+    </form>
+  </dialog>
+
+  <dialog id="reminderDialog" class="modal">
+    <form id="reminderForm" method="dialog">
+      <div class="modal-heading">
+        <div><p class="eyebrow">REMINDER SETTINGS</p><h2>三餐提醒設定</h2></div>
+        <button type="button" class="close-button" data-close="reminderDialog" aria-label="關閉">×</button>
+      </div>
+      <p class="muted">設定平常的用餐時間。若時間到了仍未記錄，網站會顯示提醒。</p>
+      <div class="reminder-time-row"><label for="breakfastTime">☀️ 早餐</label><input id="breakfastTime" type="time" value="08:00"></div>
+      <div class="reminder-time-row"><label for="lunchTime">🌤 午餐</label><input id="lunchTime" type="time" value="12:00"></div>
+      <div class="reminder-time-row"><label for="dinnerTime">🌙 晚餐</label><input id="dinnerTime" type="time" value="18:00"></div>
+      <label class="toggle-row"><span><strong>啟用瀏覽器通知</strong><small>允許瀏覽器在用餐時間顯示通知</small></span><input type="checkbox" id="notificationsEnabled"></label>
+      <div class="modal-actions">
+        <button type="button" class="button button-ghost" data-close="reminderDialog">取消</button>
+        <button type="submit" class="button button-primary">儲存提醒</button>
+      </div>
+      <p class="form-hint">瀏覽器通知需要授權，且網站需保持開啟才會定時檢查提醒。</p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="script.js"></script>
+</body>
+</html>
