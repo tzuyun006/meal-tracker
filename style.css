@@ -65,7 +65,7 @@ h2 { margin-bottom: 0; font-size: 21px; letter-spacing: -.025em; }
 .stats-card { padding: 23px; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); box-shadow: var(--shadow); }
 .stats-total { display: flex; align-items: center; justify-content: space-between; padding-bottom: 18px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
 .stats-total strong { color: var(--ink); font-size: 27px; }
-.stats-details { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; padding: 19px 0 5px; }
+.stats-details { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; padding: 19px 0 5px; }
 .stats-details div { display: grid; grid-template-columns: 10px 1fr; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
 .stats-details strong { grid-column: 2; color: var(--ink); font-size: 15px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -126,3 +126,22 @@ footer { display: flex; justify-content: space-between; gap: 12px; padding: 42px
   .reminder-status { margin-left: 57px; }
   footer { flex-direction: column; padding-top: 34px; }
 }
+
+/* Extra snack records and daily review */
+.snack-list { display: grid; gap: 10px; }
+.snack-card { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:15px 17px; border:1px solid var(--line); border-radius:15px; background:var(--paper); }
+.snack-info { min-width:0; } .snack-info strong { font-size:13px; } .snack-info p { margin:5px 0 0; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+.snack-side { display:flex; flex-direction:column; align-items:flex-end; gap:8px; white-space:nowrap; }
+.empty-state, .review-empty { padding:18px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); font-size:12px; text-align:center; }
+.snack { background:#d5a0a0; }
+.review-card { padding:21px; border:1px solid var(--line); border-radius:18px; background:var(--paper); box-shadow:var(--shadow); }
+.review-total { display:flex; justify-content:space-between; align-items:center; gap:12px; color:var(--muted); font-size:13px; }
+.review-total strong { color:var(--ink); font-size:26px; }
+.review-breakdown { margin:10px 0 16px; color:var(--muted); font-size:11px; }
+.review-entry-list { display:grid; gap:0; border-top:1px solid var(--line); }
+.review-entry { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid var(--line); }
+.review-entry div { min-width:0; } .review-entry strong { display:block; font-size:12px; overflow-wrap:anywhere; }
+.review-entry small { display:block; margin-top:4px; color:var(--muted); font-size:10px; overflow-wrap:anywhere; }
+.review-entry > strong { white-space:nowrap; }
+.review-card .small { margin:13px 0 0; }
+@media (max-width:600px) { .snack-card { align-items:flex-start; } .snack-side { align-items:flex-end; } .review-card { padding:17px; } }

@@ -50,6 +50,28 @@
 
       <section class="section-block">
         <div class="section-heading">
+          <div><p class="eyebrow">EXTRA BITES</p><h2>點心與額外花費</h2></div>
+          <button class="button button-primary" id="addSnackBtn" type="button">＋ 新增紀錄</button>
+        </div>
+        <div class="snack-list" id="snackList"></div>
+        <p class="muted small">下午茶、飲料、宵夜或臨時買的小東西，都可以記在這裡。</p>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div><p class="eyebrow">DAILY REVIEW</p><h2>每日回顧</h2></div>
+          <input type="date" id="reviewDate" class="range-select" aria-label="選擇回顧日期">
+        </div>
+        <div class="review-card">
+          <div class="review-total"><span id="reviewDateLabel">今日總花費</span><strong id="reviewTotal">$0</strong></div>
+          <div class="review-breakdown" id="reviewBreakdown"></div>
+          <div class="review-entry-list" id="reviewEntries"></div>
+          <p class="muted small" id="reviewNote">記錄下來的餐點會整理在這裡。</p>
+        </div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
           <div><p class="eyebrow">SPENDING OVERVIEW</p><h2>餐費統計</h2></div>
           <select id="statsRange" class="range-select" aria-label="統計期間">
             <option value="day">今天</option>
@@ -66,6 +88,7 @@
             <div><span class="dot breakfast"></span><span>早餐</span><strong id="breakfastTotal">$0</strong></div>
             <div><span class="dot lunch"></span><span>午餐</span><strong id="lunchTotal">$0</strong></div>
             <div><span class="dot dinner"></span><span>晚餐</span><strong id="dinnerTotal">$0</strong></div>
+            <div><span class="dot snack"></span><span>點心</span><strong id="snackTotal">$0</strong></div>
           </div>
           <p class="muted small" id="statsNote">依照已儲存的餐點紀錄統計。</p>
         </div>
@@ -129,6 +152,28 @@
         <button type="submit" class="button button-primary">儲存紀錄</button>
       </div>
       <p class="form-hint">照片與紀錄會儲存在這台裝置的瀏覽器中，不會自動上傳到網路。</p>
+    </form>
+  </dialog>
+
+  <dialog id="snackDialog" class="modal">
+    <form id="snackForm" method="dialog">
+      <div class="modal-heading">
+        <div><p class="eyebrow">EXTRA RECORD</p><h2 id="snackDialogTitle">新增點心紀錄</h2></div>
+        <button type="button" class="close-button" data-close="snackDialog" aria-label="關閉">×</button>
+      </div>
+      <input type="hidden" id="snackId">
+      <label for="snackName">吃了什麼？</label>
+      <input id="snackName" type="text" maxlength="60" placeholder="例如：珍珠奶茶、雞蛋糕、宵夜泡麵" required>
+      <div class="form-row">
+        <div class="form-field"><label for="snackPrice">花費（元）</label><input id="snackPrice" type="number" min="0" max="999999" step="1" placeholder="例如 60"></div>
+        <div class="form-field"><label for="snackTime">時間</label><input id="snackTime" type="time"></div>
+      </div>
+      <label for="snackNote">備註（選填）</label>
+      <textarea id="snackNote" rows="2" maxlength="300" placeholder="例如：和同學分著吃"></textarea>
+      <div class="modal-actions">
+        <button type="button" class="button button-ghost" data-close="snackDialog">取消</button>
+        <button type="submit" class="button button-primary">儲存紀錄</button>
+      </div>
     </form>
   </dialog>
 

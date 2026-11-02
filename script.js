@@ -93,6 +93,120 @@
     writeRecords(records);
   }
 
+  function getSnacks(date) {
+    const day = readRecords()[date] || {};
+    return Array.isArray(day.snacks) ? day.snacks : [];
+  }
+
+  async function renderSnacks() {
+    const list = $("snackList");
+    list.innerHTML = "";
+    const snacks = getSnacks(todayKey()).slice().sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+    if (!snacks.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "今天還沒有點心紀錄，想記的時候再新增就好。";
+      list.append(empty);
+      return;
+    }
+    for (const snack of snacks) {
+      const card = document.createElement("article");
+      card.className = "snack-card";
+      const info = document.createElement("div");
+      info.className = "snack-info";
+      const name = document.createElement("strong");
+      name.textContent = snack.name || "未命名點心";
+      const meta = document.createElement("p");
+      meta.textContent = `${snack.time || "未填時間"}${snack.note ? " · " + snack.note : ""}`;
+      info.append(name, meta);
+      const side = document.createElement("div");
+      side.className = "snack-side";
+      const price = document.createElement("strong");
+      price.textContent = money(snack.price);
+      const actions = document.createElement("div");
+      actions.className = "meal-actions";
+      const edit = document.createElement("button");
+      edit.className = "small-action"; edit.textContent = "編輯";
+      edit.addEventListener("click", () => openSnackEditor(snack.id));
+      const remove = document.createElement("button");
+      remove.className = "small-action"; remove.textContent = "刪除";
+      remove.addEventListener("click", async () => {
+        if (!confirm("確定刪除這筆點心紀錄嗎？")) return;
+        const records = readRecords();
+        records[todayKey()].snacks = getSnacks(todayKey()).filter(item => item.id !== snack.id);
+        writeRecords(records);
+        await renderAll(); showToast("已刪除點心紀錄");
+      });
+      actions.append(edit, remove); side.append(price, actions); card.append(info, side); list.append(card);
+    }
+  }
+
+  function openSnackEditor(id = "") {
+    const snack = id ? getSnacks(todayKey()).find(item => item.id === id) : null;
+    $("snackId").value = snack?.id || "";
+    $("snackDialogTitle").textContent = snack ? "編輯點心紀錄" : "新增點心紀錄";
+    $("snackName").value = snack?.name || "";
+    $("snackPrice").value = snack?.price ?? "";
+    $("snackTime").value = snack?.time || `${String(new Date().getHours()).padStart(2,"0")}:${String(new Date().getMinutes()).padStart(2,"0")}`;
+    $("snackNote").value = snack?.note || "";
+    openDialog("snackDialog");
+  }
+
+  function handleSnackSubmit(event) {
+    event.preventDefault();
+    const name = $("snackName").value.trim();
+    const priceText = $("snackPrice").value;
+    const price = priceText === "" ? 0 : Number(priceText);
+    if (!name) return showToast("請填寫點心名稱");
+    if (!Number.isFinite(price) || price < 0) return showToast("請輸入有效的花費");
+    const records = readRecords();
+    if (!records[todayKey()]) records[todayKey()] = {};
+    const snacks = Array.isArray(records[todayKey()].snacks) ? records[todayKey()].snacks : [];
+    const id = $("snackId").value || (crypto.randomUUID ? crypto.randomUUID() : `snack-${Date.now()}`);
+    const item = { id, name, price, time: $("snackTime").value, note: $("snackNote").value.trim(), updatedAt: new Date().toISOString() };
+    const index = snacks.findIndex(entry => entry.id === id);
+    if (index >= 0) snacks[index] = item; else snacks.push(item);
+    records[todayKey()].snacks = snacks;
+    writeRecords(records);
+    closeDialog("snackDialog");
+    renderAll(); showToast("點心紀錄已儲存！");
+  }
+
+  function renderDayReview() {
+    const date = $("reviewDate").value || todayKey();
+    const day = readRecords()[date] || {};
+    const entries = [];
+    for (const type of MEAL_TYPES) {
+      const meal = day[type.id];
+      if (meal) entries.push({ label: type.label, name: meal.name || "未填寫餐點名稱", time: meal.time || "", price: Number(meal.price) || 0, note: meal.note || "" });
+    }
+    for (const snack of (Array.isArray(day.snacks) ? day.snacks : [])) {
+      entries.push({ label: "點心", name: snack.name || "未命名點心", time: snack.time || "", price: Number(snack.price) || 0, note: snack.note || "" });
+    }
+    entries.sort((a,b) => (a.time || "").localeCompare(b.time || ""));
+    const total = entries.reduce((sum, entry) => sum + entry.price, 0);
+    $("reviewDateLabel").textContent = date === todayKey() ? "今日總花費" : `${date} 總花費`;
+    $("reviewTotal").textContent = money(total);
+    const mealCount = entries.filter(entry => entry.label !== "點心").length;
+    const snackCount = entries.length - mealCount;
+    $("reviewBreakdown").textContent = `正餐 ${mealCount} 餐 · 點心／額外紀錄 ${snackCount} 筆`;
+    const list = $("reviewEntries"); list.innerHTML = "";
+    if (!entries.length) {
+      const empty = document.createElement("p"); empty.className = "review-empty"; empty.textContent = "這一天還沒有紀錄。"; list.append(empty);
+    } else {
+      for (const entry of entries) {
+        const row = document.createElement("div"); row.className = "review-entry";
+        const left = document.createElement("div");
+        const title = document.createElement("strong"); title.textContent = `${entry.label} · ${entry.name}`;
+        const meta = document.createElement("small"); meta.textContent = [entry.time, entry.note].filter(Boolean).join(" · ");
+        left.append(title, meta);
+        const price = document.createElement("strong"); price.textContent = money(entry.price);
+        row.append(left, price); list.append(row);
+      }
+    }
+    $("reviewNote").textContent = entries.length ? "這份回顧會隨著你新增或修改紀錄自動更新。" : "有記錄的餐點和點心會整理在這裡。";
+  }
+
   async function renderMeals() {
     const records = readRecords();
     const day = records[todayKey()] || {};
@@ -173,7 +287,9 @@
   function renderSummary() {
     const day = readRecords()[todayKey()] || {};
     const completed = MEAL_TYPES.filter(t => day[t.id]).length;
-    const total = MEAL_TYPES.reduce((sum, t) => sum + (Number(day[t.id]?.price) || 0), 0);
+    const mealTotal = MEAL_TYPES.reduce((sum, t) => sum + (Number(day[t.id]?.price) || 0), 0);
+    const snackTotal = (Array.isArray(day.snacks) ? day.snacks : []).reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+    const total = mealTotal + snackTotal;
     $("todayTotal").textContent = money(total);
     $("completedCount").textContent = completed;
     $("progressBar").style.width = `${completed / 3 * 100}%`;
@@ -196,10 +312,11 @@
   function renderStats() {
     const range = $("statsRange").value;
     const records = readRecords();
-    const totals = { breakfast: 0, lunch: 0, dinner: 0 };
+    const totals = { breakfast: 0, lunch: 0, dinner: 0, snack: 0 };
     for (const [date, meals] of Object.entries(records)) {
       if (!dateInRange(date, range)) continue;
       for (const type of MEAL_TYPES) totals[type.id] += Number(meals[type.id]?.price) || 0;
+      for (const snack of (Array.isArray(meals.snacks) ? meals.snacks : [])) totals.snack += Number(snack.price) || 0;
     }
     const total = Object.values(totals).reduce((a, b) => a + b, 0);
     $("rangeLabel").textContent = range === "day" ? "今日累計" : range === "week" ? "本週累計" : "本月累計";
@@ -207,6 +324,7 @@
     $("breakfastTotal").textContent = money(totals.breakfast);
     $("lunchTotal").textContent = money(totals.lunch);
     $("dinnerTotal").textContent = money(totals.dinner);
+    $("snackTotal").textContent = money(totals.snack);
     $("statsNote").textContent = range === "day" ? "統計今天已儲存的餐點。" : "統計此期間已儲存的餐點紀錄。";
   }
 
@@ -375,12 +493,19 @@
   async function renderAll() {
     renderSummary();
     await renderMeals();
+    await renderSnacks();
+    renderDayReview();
     renderStats();
     renderReminderStatus();
   }
 
   function bindEvents() {
     $("mealForm").addEventListener("submit", handleMealSubmit);
+    $("snackForm").addEventListener("submit", handleSnackSubmit);
+    $("addSnackBtn").addEventListener("click", () => openSnackEditor());
+    $("reviewDate").value = todayKey();
+    $("reviewDate").max = todayKey();
+    $("reviewDate").addEventListener("change", renderDayReview);
     $("mealPhoto").addEventListener("change", handlePhotoChange);
     $("removePhoto").addEventListener("click", () => {
       currentPhotoBlob = null;
