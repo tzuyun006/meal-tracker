@@ -14,6 +14,8 @@
   let db;
   let currentPhotoBlob = null;
   let currentPhotoId = null;
+  let currentSnackPhotoBlob = null;
+  let currentSnackPhotoId = null;
   let toastTimer;
 
   const $ = (id) => document.getElementById(id);
@@ -133,6 +135,8 @@
       remove.addEventListener("click", async () => {
         if (!confirm("確定刪除這筆點心紀錄嗎？")) return;
         const records = readRecords();
+        const oldSnack = getSnacks(todayKey()).find(item => item.id === snack.id);
+        if (oldSnack?.photoId) await deletePhoto(oldSnack.photoId);
         records[todayKey()].snacks = getSnacks(todayKey()).filter(item => item.id !== snack.id);
         writeRecords(records);
         await renderAll(); showToast("已刪除點心紀錄");
@@ -149,10 +153,20 @@
     $("snackPrice").value = snack?.price ?? "";
     $("snackTime").value = snack?.time || `${String(new Date().getHours()).padStart(2,"0")}:${String(new Date().getMinutes()).padStart(2,"0")}`;
     $("snackNote").value = snack?.note || "";
+    currentSnackPhotoBlob = null;
+    currentSnackPhotoId = snack?.photoId || null;
+    $("snackPhoto").value = "";
+    $("snackPhotoPreviewWrap").hidden = true;
+    if (snack?.photoId) getPhoto(snack.photoId).then(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      $("snackPhotoPreview").src = url;
+      $("snackPhotoPreviewWrap").hidden = false;
+    });
     openDialog("snackDialog");
   }
 
-  function handleSnackSubmit(event) {
+  async function handleSnackSubmit(event) {
     event.preventDefault();
     const name = $("snackName").value.trim();
     const priceText = $("snackPrice").value;
@@ -163,27 +177,40 @@
     if (!records[todayKey()]) records[todayKey()] = {};
     const snacks = Array.isArray(records[todayKey()].snacks) ? records[todayKey()].snacks : [];
     const id = $("snackId").value || (crypto.randomUUID ? crypto.randomUUID() : `snack-${Date.now()}`);
-    const item = { id, name, price, time: $("snackTime").value, note: $("snackNote").value.trim(), updatedAt: new Date().toISOString() };
+    let photoId = currentSnackPhotoId;
+    if (currentSnackPhotoBlob) {
+      photoId = `snack-${id}`;
+      try { await savePhoto(photoId, currentSnackPhotoBlob); }
+      catch (error) { console.error(error); return showToast("點心照片儲存失敗，請再試一次"); }
+    }
+    const item = { id, name, price, time: $("snackTime").value, note: $("snackNote").value.trim(), photoId: photoId || null, updatedAt: new Date().toISOString() };
     const index = snacks.findIndex(entry => entry.id === id);
-    if (index >= 0) snacks[index] = item; else snacks.push(item);
+    if (index >= 0) {
+      if (snacks[index].photoId && snacks[index].photoId !== item.photoId) await deletePhoto(snacks[index].photoId);
+      snacks[index] = item;
+    } else snacks.push(item);
     records[todayKey()].snacks = snacks;
     writeRecords(records);
     closeDialog("snackDialog");
     renderAll(); showToast("點心紀錄已儲存！");
   }
 
-  function renderDayReview() {
+  let reviewPhotoUrls = [];
+  let reviewCollageEntries = [];
+
+  async function renderDayReview() {
     const date = $("reviewDate").value || todayKey();
     const day = readRecords()[date] || {};
     const entries = [];
     for (const type of MEAL_TYPES) {
       const meal = day[type.id];
-      if (meal) entries.push({ label: type.label, name: meal.name || "未填寫餐點名稱", time: meal.time || "", price: Number(meal.price) || 0, note: meal.note || "" });
+      if (meal) entries.push({ label: type.label, name: meal.name || "未填寫餐點名稱", time: meal.time || "", price: Number(meal.price) || 0, note: meal.note || "", photoId: meal.photoId || null });
     }
     for (const snack of (Array.isArray(day.snacks) ? day.snacks : [])) {
-      entries.push({ label: "點心", name: snack.name || "未命名點心", time: snack.time || "", price: Number(snack.price) || 0, note: snack.note || "" });
+      entries.push({ label: "點心", name: snack.name || "未命名點心", time: snack.time || "", price: Number(snack.price) || 0, note: snack.note || "", photoId: snack.photoId || null });
     }
     entries.sort((a,b) => (a.time || "").localeCompare(b.time || ""));
+    reviewCollageEntries = entries;
     const total = entries.reduce((sum, entry) => sum + entry.price, 0);
     $("reviewDateLabel").textContent = date === todayKey() ? "今日總花費" : `${date} 總花費`;
     $("reviewTotal").textContent = money(total);
@@ -204,7 +231,98 @@
         row.append(left, price); list.append(row);
       }
     }
+
+    reviewPhotoUrls.forEach(url => URL.revokeObjectURL(url));
+    reviewPhotoUrls = [];
+    const collage = $("reviewCollage"); collage.innerHTML = "";
+    const photoEntries = entries.filter(entry => entry.photoId);
+    for (const entry of entries.slice(0, 9)) {
+      const tile = document.createElement("div"); tile.className = "collage-tile";
+      const placeholder = document.createElement("div"); placeholder.className = "collage-placeholder";
+      placeholder.textContent = entry.label === "早餐" ? "☀️" : entry.label === "午餐" ? "🥗" : entry.label === "晚餐" ? "🌙" : "🍪";
+      tile.append(placeholder);
+      if (entry.photoId) {
+        try {
+          const blob = await getPhoto(entry.photoId);
+          if (blob) {
+            const url = URL.createObjectURL(blob); reviewPhotoUrls.push(url);
+            const img = document.createElement("img"); img.src = url; img.alt = `${entry.label}：${entry.name}`;
+            tile.prepend(img); placeholder.remove();
+          }
+        } catch (e) { console.warn("讀取回顧照片失敗", e); }
+      }
+      const caption = document.createElement("span"); caption.className = "collage-caption";
+      caption.textContent = `${entry.time ? entry.time + " · " : ""}${entry.label}｜${entry.name}`;
+      tile.append(caption); collage.append(tile);
+    }
+    for (let i = entries.length; i < 9; i++) {
+      const tile = document.createElement("div"); tile.className = "collage-tile collage-empty";
+      tile.textContent = "留給下一份美味回憶"; collage.append(tile);
+    }
+    $("collageHint").textContent = photoEntries.length
+      ? `已整理 ${Math.min(entries.length, 9)} 筆紀錄，其中 ${photoEntries.length} 筆有照片。`
+      : "目前還沒有照片；上傳三餐照片後，就會自動整理成九宮格。沒有照片的紀錄會以小圖示呈現。";
+    $("downloadCollageBtn").disabled = entries.length === 0;
     $("reviewNote").textContent = entries.length ? "這份回顧會隨著你新增或修改紀錄自動更新。" : "有記錄的餐點和點心會整理在這裡。";
+  }
+
+  async function downloadDayCollage() {
+    const entries = reviewCollageEntries.slice(0, 9);
+    if (!entries.length) return showToast("這一天還沒有紀錄可以製作拼貼");
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const tile = 360, gap = 18, margin = 42, header = 170, footer = 120;
+    canvas.width = margin * 2 + tile * 3 + gap * 2;
+    canvas.height = header + margin + tile * 3 + gap * 2 + footer;
+    ctx.fillStyle = "#f7f5ef"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const date = $("reviewDate").value || todayKey();
+    ctx.fillStyle = "#34483b"; ctx.font = "bold 42px sans-serif"; ctx.fillText("好好吃飯 · 今日回顧", margin, 72);
+    ctx.fillStyle = "#788579"; ctx.font = "24px sans-serif"; ctx.fillText(date, margin, 116);
+    const total = entries.reduce((sum, e) => sum + e.price, 0);
+    for (let i = 0; i < 9; i++) {
+      const x = margin + (i % 3) * (tile + gap);
+      const y = header + (i / 3 | 0) * (tile + gap);
+      ctx.fillStyle = "#e9ede5"; ctx.fillRect(x, y, tile, tile);
+      const entry = entries[i];
+      if (entry?.photoId) {
+        try {
+          const blob = await getPhoto(entry.photoId);
+          if (blob) {
+            const bitmap = await createImageBitmap(blob);
+            const scale = Math.max(tile / bitmap.width, tile / bitmap.height);
+            const sw = tile / scale, sh = tile / scale;
+            ctx.drawImage(bitmap, (bitmap.width - sw) / 2, (bitmap.height - sh) / 2, sw, sh, x, y, tile, tile);
+            bitmap.close?.();
+          } else drawCollagePlaceholder(ctx, x, y, tile, entry);
+        } catch { drawCollagePlaceholder(ctx, x, y, tile, entry); }
+      } else if (entry) drawCollagePlaceholder(ctx, x, y, tile, entry);
+      else {
+        ctx.fillStyle = "#a2ad9f"; ctx.font = "22px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("留給下一份美味回憶", x + tile / 2, y + tile / 2); ctx.textAlign = "left";
+      }
+      if (entry) {
+        ctx.fillStyle = "rgba(28,39,31,.72)"; ctx.fillRect(x, y + tile - 76, tile, 76);
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 20px sans-serif";
+        const label = `${entry.time ? entry.time + " · " : ""}${entry.label}`;
+        ctx.fillText(label, x + 16, y + tile - 46);
+        ctx.font = "18px sans-serif";
+        const name = entry.name.length > 19 ? entry.name.slice(0, 18) + "…" : entry.name;
+        ctx.fillText(name, x + 16, y + tile - 18);
+      }
+    }
+    ctx.fillStyle = "#34483b"; ctx.font = "bold 28px sans-serif";
+    ctx.fillText(`當日總花費 ${money(total)}　·　共 ${entries.length} 筆紀錄`, margin, canvas.height - 48);
+    const link = document.createElement("a");
+    link.download = `好好吃飯-${date}-九宮格.png`;
+    link.href = canvas.toDataURL("image/png"); link.click();
+    showToast("九宮格照片已下載！");
+  }
+
+  function drawCollagePlaceholder(ctx, x, y, size, entry) {
+    ctx.fillStyle = "#e6ece3"; ctx.fillRect(x, y, size, size);
+    ctx.fillStyle = "#718273"; ctx.font = "64px sans-serif"; ctx.textAlign = "center";
+    const emoji = entry.label === "早餐" ? "☀️" : entry.label === "午餐" ? "🥗" : entry.label === "晚餐" ? "🌙" : "🍪";
+    ctx.fillText(emoji, x + size / 2, y + size / 2); ctx.textAlign = "left";
   }
 
   async function renderMeals() {
@@ -494,7 +612,7 @@
     renderSummary();
     await renderMeals();
     await renderSnacks();
-    renderDayReview();
+    await renderDayReview();
     renderStats();
     renderReminderStatus();
   }
@@ -502,10 +620,24 @@
   function bindEvents() {
     $("mealForm").addEventListener("submit", handleMealSubmit);
     $("snackForm").addEventListener("submit", handleSnackSubmit);
+    $("snackPhoto").addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) return showToast("請選擇圖片檔案");
+      if (file.size > 5 * 1024 * 1024) { event.target.value = ""; return showToast("照片太大了，請選擇 5MB 以內的圖片"); }
+      currentSnackPhotoBlob = await compressImage(file);
+      $("snackPhotoPreview").src = URL.createObjectURL(currentSnackPhotoBlob);
+      $("snackPhotoPreviewWrap").hidden = false;
+    });
+    $("removeSnackPhoto").addEventListener("click", () => {
+      currentSnackPhotoBlob = null; currentSnackPhotoId = null;
+      $("snackPhoto").value = ""; $("snackPhotoPreviewWrap").hidden = true;
+    });
     $("addSnackBtn").addEventListener("click", () => openSnackEditor());
     $("reviewDate").value = todayKey();
     $("reviewDate").max = todayKey();
-    $("reviewDate").addEventListener("change", renderDayReview);
+    $("reviewDate").addEventListener("change", () => { renderDayReview(); });
+    $("downloadCollageBtn").addEventListener("click", downloadDayCollage);
     $("mealPhoto").addEventListener("change", handlePhotoChange);
     $("removePhoto").addEventListener("click", () => {
       currentPhotoBlob = null;

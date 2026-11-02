@@ -65,6 +65,12 @@
         <div class="review-card">
           <div class="review-total"><span id="reviewDateLabel">今日總花費</span><strong id="reviewTotal">$0</strong></div>
           <div class="review-breakdown" id="reviewBreakdown"></div>
+          <div class="review-collage-heading">
+            <div><strong>今日飲食照片</strong><small>把當天的紀錄整理成九宮格</small></div>
+            <button class="button button-primary" id="downloadCollageBtn" type="button">下載九宮格</button>
+          </div>
+          <div class="review-collage" id="reviewCollage" aria-label="每日飲食九宮格"></div>
+          <p class="muted small collage-hint" id="collageHint">有照片的餐點會自動放進九宮格。</p>
           <div class="review-entry-list" id="reviewEntries"></div>
           <p class="muted small" id="reviewNote">記錄下來的餐點會整理在這裡。</p>
         </div>
@@ -170,6 +176,9 @@
       </div>
       <label for="snackNote">備註（選填）</label>
       <textarea id="snackNote" rows="2" maxlength="300" placeholder="例如：和同學分著吃"></textarea>
+      <label class="upload-label" for="snackPhoto"><span class="upload-icon">＋</span><span><strong>上傳點心照片</strong><small>讓點心也能出現在每日九宮格</small></span></label>
+      <input id="snackPhoto" type="file" accept="image/*" hidden>
+      <div id="snackPhotoPreviewWrap" class="photo-preview-wrap" hidden><img id="snackPhotoPreview" alt="點心照片預覽"><button type="button" class="remove-photo" id="removeSnackPhoto">移除照片</button></div>
       <div class="modal-actions">
         <button type="button" class="button button-ghost" data-close="snackDialog">取消</button>
         <button type="submit" class="button button-primary">儲存紀錄</button>
